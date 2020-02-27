@@ -5,8 +5,8 @@
 	* lpc_reset: reset line. active low
  * output signals:
 	* out_cyctype_dir: type and direction. same as in LPC Spec 1.1
-        * out_addr: 16-bit address
-        * out_data: data read or written (1byte)
+	* out_addr: 16-bit address
+	* out_data: data read or written (1byte)
 	* out_clock_enable: on rising edge all data must read.
  */
 
@@ -39,7 +39,7 @@ module lpc(
 	reg [31:0] addr;
 	reg [7:0] data;
 
-	always @(negedge lpc_clock or negedge lpc_reset) begin
+	always @(posedge lpc_clock or negedge lpc_reset) begin
 		if (~lpc_reset) begin
 			state <= idle;
 			counter <= 1;
@@ -52,36 +52,36 @@ module lpc(
 					state <= cycle_dir;
 				else
 					state <= idle; /* abort */
-            end else begin
-                counter <= counter - 1;
+			end else begin
+				counter <= counter - 1;
 
-                case (state)
-                cycle_dir:
-                    cyctype_dir <= lpc_ad;
+				case (state)
+				cycle_dir:
+					cyctype_dir <= lpc_ad;
 
-                address: begin
-                    addr[31:4] <= addr[27:0];
-                    addr[3:0] <= lpc_ad;
-                end
+				address: begin
+					addr[31:4] <= addr[27:0];
+					addr[3:0] <= lpc_ad;
+				end
 
-                read_data: begin
-                    data[7:4] <= lpc_ad;
-                    data[3:0] <= data[7:4];
-                end
+				read_data: begin
+					data[7:4] <= lpc_ad;
+					data[3:0] <= data[7:4];
+				end
 
-		sync: begin
-			if (lpc_ad == 4'b0000)
-				if (cyctype_dir[3] == 0) begin /* i/o or memory */
-					state <= read_data;
-					data <= 0;
-					counter <= 2;
-				end else
-					state <= idle; /* unsupported dma or reserved */
-			end
+				sync: begin
+					if (lpc_ad == 4'b0000)
+						if (cyctype_dir[3] == 0) begin /* i/o or memory */
+							state <= read_data;
+							data <= 0;
+							counter <= 2;
+						end else
+							state <= idle; /* unsupported dma or reserved */
+				end
 
-                default:
-                    begin end
-                endcase
+				default:
+					begin end
+				endcase
 				if (counter == 1) begin
 					case (state)
 					idle: begin end
