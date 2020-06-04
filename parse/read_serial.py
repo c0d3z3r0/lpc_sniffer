@@ -24,4 +24,5 @@ while True:
         continue
     timestampStr = dateTimeObj.strftime("[%H:%M:%S.%f]")
     lpctype, direction, address, data = lpc
-    print('%s %3s: %5s %8s: %4s' % (timestampStr, lpctype, direction, address, data))
+    #print('%s %3s: %5s %8s: %4s' % (timestampStr, lpctype, direction, address, data))
+    print ('%3s: %5s %8s: %4s' % (lpctype, direction, address, data))
