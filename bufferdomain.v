@@ -23,13 +23,13 @@ module bufferdomain #(parameter AW = 8)
 			if (~reset) begin
 				counter <= 0;
 			end else begin
-				if (counter != 0)
+				if (counter > 0)
 					counter <= counter - 1;
 			end
 		end
 	end
 	always @(*) begin // filter addresses beginning with 0x0a4X
-		if (counter == 1) // && input_data[27:20] == 8'ha4
+		if (counter == 1) //  && input_data[27:20] == 8'ha4
 			output_enable = 1;
 		else
 			output_enable = 0;

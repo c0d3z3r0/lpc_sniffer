@@ -6,8 +6,8 @@ module ringbuffer #(parameter AW = 8, DW = 48)
 		input write_clock_enable,
 		output [DW-1:0] read_data,
 		input [DW-1:0] write_data,
-		output reg empty,
-		output reg overflow);
+		output wire empty,
+		output wire overflow);
 
 	reg [AW-1:0] next_write_addr;
 

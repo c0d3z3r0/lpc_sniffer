@@ -11,7 +11,7 @@
  */
 
 module lpc(
-	input [3:0] lpc_ad,
+	input wire [3:0] lpc_ad,
 	input lpc_clock,
 	input lpc_frame,
 	input lpc_reset,
@@ -27,8 +27,8 @@ module lpc(
 	/* addr + data written or read */
 
 	/* state machine */
-	reg [3:0] state = 0;
-	localparam idle = 0, start = 1, cycle_dir = 2, address = 3, tar = 4, sync = 5, read_data = 6, abort = 7;
+	reg [7:0] state = 0;
+	localparam idle = 0, start = 1, cycle_dir = 2, address = 3, tar = 4, sync = 5, read_data = 6, abort = 7, tar_finish = 8;
 
 	/* counter used by some states */
 	reg [3:0] counter;
@@ -47,17 +47,14 @@ module lpc(
 		else begin
 			if (~lpc_frame) begin
 				counter <= 1;
-
 				if (lpc_ad == 4'b0000) /* start condition */
 					state <= cycle_dir;
 				else
 					state <= idle; /* abort */
-			end else begin
+			end
+			else begin
 				counter <= counter - 1;
-
 				case (state)
-				cycle_dir:
-					cyctype_dir <= lpc_ad;
 
 				address: begin
 					addr[31:4] <= addr[27:0];
@@ -65,47 +62,38 @@ module lpc(
 				end
 
 				read_data: begin
+					if (addr[11:4] != 8'ha4 && addr[7:0] != 8'h80)
+						state <= idle;
+					else
+						addr[15:12] <= addr[11:8];
 					data[7:4] <= lpc_ad;
 					data[3:0] <= data[7:4];
 				end
 
-				sync: begin
-					if (lpc_ad == 4'b0000)
-						if (cyctype_dir[3] == 0) begin /* i/o or memory */
-							state <= read_data;
-							data <= 0;
-							counter <= 2;
-						end else
-							state <= idle; /* unsupported dma or reserved */
-				end
-
-				default:
-					begin end
+				default: begin end
 				endcase
 				if (counter == 1) begin
 					case (state)
 					idle: begin end
 
 					cycle_dir: begin
+						cyctype_dir <= lpc_ad;
 						out_clock_enable <= 0;
 						out_sync_timeout <= 0;
 
-						if (lpc_ad[3:2] == 2'b00) begin /* i/o */
+						if (lpc_ad[3:2] == 2'b00) begin
+							/* i/o */
 							state <= address;
 							counter <= 4;
 							addr <= 0;
-						end
-						else if (lpc_ad[3:2] == 2'b01) begin /* memory */
-							state <= address;
-							counter <= 8;
-							addr <= 0;
-						end else begin /* dma or reserved not yet supported */
+						end else begin
+							/* dma or reserved not yet supported */
 							state <= idle;
 						end
 					end
 
 					address: begin
-						if (cyctype_dir[1]) /* write memory or i/o */
+						if (cyctype_dir[1] == 1) /* write memory or i/o */
 							state <= read_data;
 						else /* read memory or i/o */
 							state <= tar;
@@ -122,24 +110,52 @@ module lpc(
 							out_sync_timeout <= 1;
 							out_clock_enable <= 1;
 							state <= idle;
+						end 
+						else if (lpc_ad == 4'b0000) begin
+							if (cyctype_dir[3] == 0) begin /* i/o or memory */
+								if (cyctype_dir[1] == 0) begin
+									/* read */
+									state <= read_data;
+									data <= 0;
+								end
+								else begin
+									/* write */
+									state <= tar_finish;
+								end
+								counter <= 2;
+							end
+						end
+						else if (lpc_ad == 4'b0101 || lpc_ad == 4'b0110) begin
+							/* short or long wait */
+							counter <= 1;
+						end
+						else begin
+						/* unsupported dma or reserved */
+							state <= idle;
 						end
 					end
 
 					read_data: begin
+						state <= tar_finish;
+						counter <= 2;
+					end
+
+					tar_finish: begin
 						out_clock_enable <= 1;
 						state <= idle;
 					end
 
-					/* todo: missing TAR after read_data */
-
-					abort: counter <= 2;
+					abort: begin
+						counter <= 2;
+					end
 					endcase
 				end
 			end
 		end
 	end
 
+	assign out_addr = addr;
 	assign out_cyctype_dir = cyctype_dir;
 	assign out_data = data;
-	assign out_addr = addr;
+
 endmodule
