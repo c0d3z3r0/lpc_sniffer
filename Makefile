@@ -3,9 +3,9 @@ NAME=top
 DEPS=buffer.v bufferdomain.v lpc.v mem2serial.v ringbuffer.v power_on_reset.v trigger_led.v pll.v ftdi.v
 
 $(NAME).bin: $(NAME).pcf $(NAME).v $(DEPS)
-	yosys -p "synth_ice40 -blif $(NAME).blif" $(NAME).v $(DEPS)
-	arachne-pnr -d 1k -p $(NAME).pcf $(NAME).blif -o $(NAME).txt
-	icepack $(NAME).txt $(NAME).bin
+	yosys -p "synth_ice40 -json $(NAME).json" $(NAME).v $(DEPS)
+	nextpnr-ice40 --hx1k --pcf $(NAME).pcf --json $(NAME).json --asc $(NAME).asc
+	icepack $(NAME).asc $(NAME).bin
 	cp $(NAME).bin lpc_sniffer.bin
 
 buffer.vvp: buffer_tb.v buffer.v
@@ -30,17 +30,17 @@ test/helloworld_tb.vvp: test/helloworld_tb.v test/helloworld.v mem2serial.v ring
 	iverilog -o test/helloworld_tb.vvp test/helloworld_tb.v test/helloworld.v mem2serial.v ringbuffer.v buffer.v uart_tx.v power_on_reset.v test/helloworldwriter.v
 
 test/helloworld.bin: test/helloworld.v mem2serial.v ringbuffer.v buffer.v uart_tx.v power_on_reset.v test/helloworldwriter.v test/helloworld.pcf
-	yosys -p "synth_ice40 -blif test/helloworld.blif" test/helloworld.v mem2serial.v ringbuffer.v buffer.v uart_tx.v power_on_reset.v test/helloworldwriter.v
-	arachne-pnr -d 1k -p test/helloworld.pcf test/helloworld.blif -o test/helloworld.txt
-	icepack test/helloworld.txt test/helloworld.bin
+	yosys -p "synth_ice40 -json test/helloworld.json" test/helloworld.v mem2serial.v ringbuffer.v buffer.v uart_tx.v power_on_reset.v test/helloworldwriter.v
+	nextpnr-ice40 --hx1k --pcf test/helloworld.pcf --json test/helloworld.json --asc test/helloworld.asc
+	icepack test/helloworld.asc test/helloworld.bin
 
 test/helloonechar.bin: test/helloonechar.v uart_tx.v power_on_reset.v test/helloonechar.pcf
-	yosys -p "synth_ice40 -blif helloonechar.blif" helloonechar.v uart_tx.v power_on_reset.v
-	arachne-pnr -d 1k -p test/helloonechar.pcf test/helloonechar.blif -o test/helloonechar.txt
-	icepack test/helloonechar.txt test/helloonechar.bin
+	yosys -p "synth_ice40 -json helloonechar.json" helloonechar.v uart_tx.v power_on_reset.v
+	nextpnr-ice40 --hx1k --pcf test/helloonechar.pcf --json test/helloonechar.json --asc test/helloonechar.asc
+	icepack test/helloonechar.asc test/helloonechar.bin
 
 clean:
-	rm -f top.blif top.txt top.ex top.bin
+	rm -f top.json top.asc top.bin
 
 test: buffer.vvp mem2serial.vvp ringbuffer.vvp uart_tx_tb.vvp top_tb.vpp test/helloonechar_tb.vvp test/helloworld_tb.vvp
 
