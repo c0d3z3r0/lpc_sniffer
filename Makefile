@@ -1,5 +1,6 @@
 
 NAME=top
+FREQ=33
 DEPS=buffer.v bufferdomain.v lpc.v mem2serial.v ringbuffer.v power_on_reset.v trigger_led.v pll.v ftdi.v
 
 $(NAME).bin: $(NAME).pcf $(NAME).v $(DEPS)
@@ -7,6 +8,9 @@ $(NAME).bin: $(NAME).pcf $(NAME).v $(DEPS)
 	nextpnr-ice40 --hx1k --pcf $(NAME).pcf --json $(NAME).json --asc $(NAME).asc
 	icepack $(NAME).asc $(NAME).bin
 	cp $(NAME).bin lpc_sniffer.bin
+
+pll.v:
+	icepll -i 12 -o $(FREQ) -m -f $@
 
 buffer.vvp: buffer_tb.v buffer.v
 	iverilog -o buffer_tb.vvp buffer_tb.v buffer.v

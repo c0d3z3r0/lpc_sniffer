@@ -2,6 +2,7 @@ top.bin
 lpc_sniffer.bin
 top.asc
 top.json
+pll.v
 *.sw?
 *.vcd
 *.vvp
