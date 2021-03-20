@@ -13,9 +13,7 @@ if len(sys.argv) != 2:
 # ser = serial.Serial(sys.argv[1], 2_000_000)
 ser = serial.Serial(sys.argv[1], 921600)
 while True:
-    line = ser.readline()
-    line = line.strip(b'\r\n')
-    print(hexlify(line))
+    line = ser.readline().rstrip()
     lpc = parse.parse_line(line)
     if not lpc:
         continue
