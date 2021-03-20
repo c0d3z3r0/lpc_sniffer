@@ -29,7 +29,7 @@ module lpc(
 	localparam[3:0] STATE_ADDRESS_CLK	= 4'd3;
 	localparam[3:0] STATE_TAR_CLK		= 4'd4;
 	localparam[3:0] STATE_SYNC		= 4'd5;
-	localparam[3:0] STATE_READ_DATA_CLK	= 4'd6;
+	localparam[3:0] STATE_DATA_CLK		= 4'd6;
 	localparam[3:0] STATE_TAREND_CLK	= 4'd7;
 	reg [3:0] state = STATE_IDLE;
 
@@ -77,19 +77,12 @@ module lpc(
 				case (state)
 					STATE_CYCLE_DIR:
 					begin
-						// cyctype_dir[3:0] <= lpc_ad[3:0];
 						cyctype_dir <= lpc_ad;
 
 						if (cyctype_dir[3:2] == 2'b00) // I/O
 						begin
-							if (cyctype_dir[1] == 1'd0) // Read
-							begin
-								state <= STATE_ADDRESS_CLK;
-								counter <= 3; // 4 nibbles
-							end else // Write
-							begin
-								state <= STATE_IDLE;
-							end
+							state <= STATE_ADDRESS_CLK;
+							counter <= 3; // 4 nibbles
 						end else
 						begin
 							state <= STATE_IDLE; // unsupported DMA or reserved
@@ -102,7 +95,17 @@ module lpc(
 
 						if (counter == 0)
 						begin
-							state <= STATE_TAR_CLK;
+							case (cyctype_dir[1])
+								1'b0: // read
+								begin
+									state <= STATE_TAR_CLK;
+								end
+
+								1'b1: // write
+								begin
+									state <= STATE_DATA_CLK;
+								end
+							endcase
 						end else
 
 						begin
@@ -136,12 +139,23 @@ module lpc(
 					begin
 						if (lpc_ad == 4'b0000) // Ready when LAD is 0000
 						begin
-							state <= STATE_READ_DATA_CLK;
-							counter <= 0;
+							case (cyctype_dir[1])
+								1'b0: // read
+								begin
+									state <= STATE_DATA_CLK;
+									counter <= 0;
+								end
+
+								1'b1: // write
+								begin
+									state <= STATE_TAREND_CLK;
+									counter <= 0;
+								end
+							endcase
 						end
 					end
 
-					STATE_READ_DATA_CLK:
+					STATE_DATA_CLK:
 					begin
 						data[counter * 4 + 3 : counter * 4] <= lpc_ad;
 
@@ -152,8 +166,19 @@ module lpc(
 
 						if (counter == 1)
 						begin
-							state <= STATE_TAREND_CLK;
-							counter <= 0;
+							case (cyctype_dir[1])
+								1'b0: // read
+								begin
+									state <= STATE_TAREND_CLK;
+									counter <= 0;
+								end
+
+								1'b1: // write
+								begin
+									state <= STATE_TAR_CLK;
+									counter <= 0;
+								end
+							endcase
 						end
 					end
 
