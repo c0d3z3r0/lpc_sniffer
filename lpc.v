@@ -79,14 +79,25 @@ module lpc(
 					begin
 						cyctype_dir <= lpc_ad;
 
-						if (cyctype_dir[3:2] == 2'b00) // I/O
-						begin
-							state <= STATE_ADDRESS_CLK;
-							counter <= 3; // 4 nibbles
-						end else
-						begin
-							state <= STATE_IDLE; // unsupported DMA or reserved
-						end
+						case (cyctype_dir[3:2])
+							2'b00: // io
+							begin
+								state <= STATE_ADDRESS_CLK;
+								addr <= 0;
+								counter <= 3; // 4 nibbles / 2 bytes
+							end
+
+							2'b01: // mem
+							begin
+								state <= STATE_ADDRESS_CLK;
+								counter <= 7; // 8 nibbles / 4 bytes
+							end
+
+							default: // unsupported DMA, FWH or reserved
+							begin
+								state <= STATE_IDLE;
+							end
+						endcase
 					end
 
 					STATE_ADDRESS_CLK:
