@@ -23,26 +23,21 @@ module lpc(
 	output reg out_clock_enable);
 
 	/* state machine */
-	localparam[4:0] STATE_IDLE = 4'd0;
-	localparam[4:0] STATE_START = 4'd1;
-	localparam[4:0] STATE_CYCLE_DIR = 4'd2;
-	localparam[4:0] STATE_ADDRESS_CLK1 = 4'd3;
-	localparam[4:0] STATE_ADDRESS_CLK2 = 4'd4;
-	localparam[4:0] STATE_ADDRESS_CLK3 = 4'd5;
-	localparam[4:0] STATE_ADDRESS_CLK4 = 4'd6;
-	localparam[4:0] STATE_TAR_CLK1 = 4'd7;
-	localparam[4:0] STATE_TAR_CLK2 = 4'd8;
-	localparam[4:0] STATE_SYNC = 4'd9;
-	localparam[4:0] STATE_READ_DATA_CLK1 = 4'd10;
-	localparam[4:0] STATE_READ_DATA_CLK2 = 4'd11;
-	localparam[4:0] STATE_TAREND_CLK1 = 4'd12;
-	localparam[4:0] STATE_TAREND_CLK2 = 4'd13;
+	localparam[3:0] STATE_IDLE		= 4'd0;
+	localparam[3:0] STATE_START		= 4'd1;
+	localparam[3:0] STATE_CYCLE_DIR		= 4'd2;
+	localparam[3:0] STATE_ADDRESS_CLK	= 4'd3;
+	localparam[3:0] STATE_TAR_CLK		= 4'd4;
+	localparam[3:0] STATE_SYNC		= 4'd5;
+	localparam[3:0] STATE_READ_DATA_CLK	= 4'd6;
+	localparam[3:0] STATE_TAREND_CLK	= 4'd7;
 	reg [3:0] state = STATE_IDLE;
 
 	// registers
 	reg [3:0] cyctype_dir;				// mode & direction, same as in LPC Spec 1.1
 	reg [31:0] addr = 32'd0;			// 32 bit address
 	reg [7:0] data;				// 8 bit data
+	reg [3:0] counter;
 
 	// combinatorial logic
 	assign out_cyctype_dir = cyctype_dir;
@@ -66,6 +61,7 @@ module lpc(
 					out_clock_enable <= 1'b0;
 					out_sync_timeout <= 1'b0;
 					state <= STATE_CYCLE_DIR;
+					counter <= 0;
 				end else
 
 				// invalid or ABORT
@@ -88,7 +84,8 @@ module lpc(
 						begin
 							if (cyctype_dir[1] == 1'd0) // Read
 							begin
-								state <= STATE_ADDRESS_CLK1;
+								state <= STATE_ADDRESS_CLK;
+								counter <= 3; // 4 nibbles
 							end else // Write
 							begin
 								state <= STATE_IDLE;
@@ -97,83 +94,84 @@ module lpc(
 						begin
 							state <= STATE_IDLE; // unsupported DMA or reserved
 						end
-
 					end
 
-					STATE_ADDRESS_CLK1:
+					STATE_ADDRESS_CLK:
 					begin
-						addr[15:12] <= lpc_ad;
-						state <= STATE_ADDRESS_CLK2;
-					end
+						addr[counter * 4 + 3 : counter * 4] <= lpc_ad;
 
-					STATE_ADDRESS_CLK2:
-					begin
-						addr[11:8] <= lpc_ad;
-						state <= STATE_ADDRESS_CLK3;
-					end
-
-					STATE_ADDRESS_CLK3:
-					begin
-						addr[7:4] <= lpc_ad;
-						state <= STATE_ADDRESS_CLK4;
-					end
-
-					STATE_ADDRESS_CLK4:
-					begin
-						addr[3:0] <= lpc_ad;
-						state <= STATE_TAR_CLK1;
-					end
-
-
-
-					STATE_TAR_CLK1:
-					begin
-						// On first clock LAD are 1111, on second clock it goes Z
-						if (lpc_ad == 4'b1111)
+						if (counter == 0)
 						begin
-							state <= STATE_TAR_CLK2;
+							state <= STATE_TAR_CLK;
+						end else
+
+						begin
+							counter <= counter - 1;
 						end
 					end
 
-					STATE_TAR_CLK2:
+					STATE_TAR_CLK:
 					begin
-						state <= STATE_SYNC;
+						if (counter == 0)
+						begin
+							// On first clock LAD are 1111, on second clock it goes Z
+							if (lpc_ad == 4'b1111)
+							begin
+								state <= STATE_TAR_CLK;
+								counter <= 1;
+							end else // invalid
+
+							begin
+								state <= STATE_IDLE;
+							end
+						end else
+
+						if (counter == 1)
+						begin
+								state <= STATE_SYNC;
+						end
 					end
-
-
 
 					STATE_SYNC:
 					begin
 						if (lpc_ad == 4'b0000) // Ready when LAD is 0000
 						begin
-						   state <= STATE_READ_DATA_CLK1;
+							state <= STATE_READ_DATA_CLK;
+							counter <= 0;
 						end
 					end
 
-					STATE_READ_DATA_CLK1:
+					STATE_READ_DATA_CLK:
 					begin
-						data[3:0] <= lpc_ad;
-						state <= STATE_READ_DATA_CLK2;
+						data[counter * 4 + 3 : counter * 4] <= lpc_ad;
+
+						if (counter == 0)
+						begin
+								counter <= 1;
+						end else
+
+						if (counter == 1)
+						begin
+							state <= STATE_TAREND_CLK;
+							counter <= 0;
+						end
 					end
 
-					STATE_READ_DATA_CLK2:
+					STATE_TAREND_CLK:
 					begin
-						data[7:4] <= lpc_ad;
-						state <= STATE_TAREND_CLK1;
+						if (counter == 0)
+						begin
+							counter <= 1;
+						end else
+
+						if (counter == 1)
+						begin
+							// No need to check for addr, it was already filtered on first TAR
+							out_clock_enable <= 1;
+							state <= STATE_IDLE;
+						end
 					end
 
-
-
-					STATE_TAREND_CLK1:
-					begin
-						state <= STATE_TAREND_CLK2;
-					end
-					STATE_TAREND_CLK2:
-					begin
-						// No need to check for addr, it was already filtered on first TAR
-						out_clock_enable <= 1;
-						state <= STATE_IDLE;
-					end
 				endcase
 			end
 		end
