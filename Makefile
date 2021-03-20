@@ -1,5 +1,5 @@
 
-NAME=top
+NAME=lpc_sniffer
 FREQ=50
 DEPS=buffer.v bufferdomain.v lpc.v mem2serial.v ringbuffer.v power_on_reset.v trigger_led.v pll.v ftdi.v
 
@@ -7,7 +7,6 @@ $(NAME).bin: $(NAME).pcf $(NAME).v $(DEPS)
 	yosys -p "synth_ice40 -json $(NAME).json" $(NAME).v $(DEPS)
 	nextpnr-ice40 --hx1k --pcf $(NAME).pcf --json $(NAME).json --asc $(NAME).asc
 	icepack $(NAME).asc $(NAME).bin
-	cp $(NAME).bin lpc_sniffer.bin
 
 pll.v:
 	icepll -i 12 -o $(FREQ) -m -f $@
@@ -24,8 +23,8 @@ ringbuffer.vvp: ringbuffer_tb.v ringbuffer.v buffer.v
 uart_tx_tb.vvp: uart_tx_tb.v uart_tx.v
 	iverilog -o uart_tx_tb.vvp uart_tx_tb.v uart_tx.v
 
-top_tb.vpp: top_tb.v top.v buffer.v bufferdomain.v lpc.v mem2serial.v ringbuffer.v uart_tx.v power_on_reset.v trigger_led.v pll.v ./test/sb_pll40_core_sim.v
-	iverilog -o top_tb.vpp top_tb.v top.v buffer.v bufferdomain.v lpc.v mem2serial.v ringbuffer.v uart_tx.v power_on_reset.v trigger_led.v pll.v ./test/sb_pll40_core_sim.v
+top_tb.vpp: top_tb.v $(NAME).v buffer.v bufferdomain.v lpc.v mem2serial.v ringbuffer.v uart_tx.v power_on_reset.v trigger_led.v pll.v ./test/sb_pll40_core_sim.v
+	iverilog -o top_tb.vpp top_tb.v $(NAME).v buffer.v bufferdomain.v lpc.v mem2serial.v ringbuffer.v uart_tx.v power_on_reset.v trigger_led.v pll.v ./test/sb_pll40_core_sim.v
 
 test/helloonechar_tb.vvp: uart_tx_tb.v uart_tx.v test/helloonechar_tb.v power_on_reset.v
 	iverilog -o test/helloonechar_tb.vvp test/helloonechar_tb.v uart_tx.v power_on_reset.v
@@ -44,11 +43,11 @@ test/helloonechar.bin: test/helloonechar.v uart_tx.v power_on_reset.v test/hello
 	icepack test/helloonechar.asc test/helloonechar.bin
 
 clean:
-	rm -f top.json top.asc top.bin
+	rm -f $(NAME).json $(NAME).asc $(NAME).bin
 
 test: buffer.vvp mem2serial.vvp ringbuffer.vvp uart_tx_tb.vvp top_tb.vpp test/helloonechar_tb.vvp test/helloworld_tb.vvp
 
-install: top.bin
-	iceprog top.bin
+install: $(NAME).bin
+	iceprog $(NAME).bin
 
 .PHONY: install

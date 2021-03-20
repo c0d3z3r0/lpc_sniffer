@@ -1,7 +1,6 @@
-top.bin
 lpc_sniffer.bin
-top.asc
-top.json
+lpc_sniffer.asc
+lpc_sniffer.json
 pll.v
 *.sw?
 *.vcd
