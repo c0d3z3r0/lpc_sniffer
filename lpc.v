@@ -35,9 +35,8 @@ module lpc(
 	localparam[4:0] STATE_SYNC = 4'd9;
 	localparam[4:0] STATE_READ_DATA_CLK1 = 4'd10;
 	localparam[4:0] STATE_READ_DATA_CLK2 = 4'd11;
-	localparam[4:0] STATE_ABORT = 4'd12;
-	localparam[4:0] STATE_TAREND_CLK1 = 4'd13;
-	localparam[4:0] STATE_TAREND_CLK2 = 4'd14;
+	localparam[4:0] STATE_TAREND_CLK1 = 4'd12;
+	localparam[4:0] STATE_TAREND_CLK2 = 4'd13;
 	reg [3:0] state = STATE_IDLE;
 
 	// registers
@@ -59,12 +58,21 @@ module lpc(
 			state <= STATE_IDLE;
 		end else
 		begin
-			if (~lpc_frame && lpc_ad == 4'b0000) // START
+			if (~lpc_frame)
 			begin
-				out_clock_enable <= 1'b0;
-				out_sync_timeout <= 1'b0;
-				state <= STATE_CYCLE_DIR;
-			end
+				if ((state == STATE_CYCLE_DIR || // START on extended LFRAME#
+				     state == STATE_IDLE) && lpc_ad == 4'b0000) // START
+				begin
+					out_clock_enable <= 1'b0;
+					out_sync_timeout <= 1'b0;
+					state <= STATE_CYCLE_DIR;
+				end else
+
+				// invalid or ABORT
+				begin
+					//state <= STATE_IDLE; // TODO: also wipes out valid cycles; needs investigation
+				end
+			end else
 
 			// If LPC_FRAME is high, then we have data
 			if (lpc_frame)
@@ -136,8 +144,7 @@ module lpc(
 
 					STATE_SYNC:
 					begin
-						// Ready when LAD is 0000
-						if (lpc_ad == 4'b0000)
+						if (lpc_ad == 4'b0000) // Ready when LAD is 0000
 						begin
 						   state <= STATE_READ_DATA_CLK1;
 						end
@@ -167,7 +174,6 @@ module lpc(
 						out_clock_enable <= 1;
 						state <= STATE_IDLE;
 					end
-
 				endcase
 			end
 		end
