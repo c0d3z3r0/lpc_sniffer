@@ -1,6 +1,6 @@
 
 NAME=top
-FREQ=33
+FREQ=50
 DEPS=buffer.v bufferdomain.v lpc.v mem2serial.v ringbuffer.v power_on_reset.v trigger_led.v pll.v ftdi.v
 
 $(NAME).bin: $(NAME).pcf $(NAME).v $(DEPS)

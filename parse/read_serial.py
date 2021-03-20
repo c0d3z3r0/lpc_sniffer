@@ -2,16 +2,11 @@
 
 from binascii import hexlify
 import sys
-import serial
+import pyftdi.serialext as ftdi
 import parse
 
-if len(sys.argv) != 2:
-    print("read_serial /dev/ttyUSB4")
-    sys.exit(1)
+ser = ftdi.serial_for_url('ftdi:///2', baudrate=12000000)
 
-# ser = serial.Serial(sys.argv[1], 115200)
-# ser = serial.Serial(sys.argv[1], 2_000_000)
-ser = serial.Serial(sys.argv[1], 921600)
 while True:
     line = ser.readline().rstrip()
     lpc = parse.parse_line(line)
