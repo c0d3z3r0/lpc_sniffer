@@ -51,7 +51,7 @@ module lpc(
 
 	// synchronous logic
 	// Clock goes high, or RESET goes low (active low reset)
-	always @(negedge lpc_clock  or negedge lpc_reset)
+	always @(posedge lpc_clock or negedge lpc_reset)
 	begin
 		if (~lpc_reset)
 		begin
