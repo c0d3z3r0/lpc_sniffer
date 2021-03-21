@@ -55,8 +55,9 @@ module lpc(
 		begin
 			if (~lpc_frame)
 			begin
-				if ((state == STATE_CYCLE_DIR || // START on extended LFRAME#
-				     state == STATE_IDLE) && lpc_ad == 4'b0000) // START
+				//if ((state == STATE_CYCLE_DIR || // START on extended LFRAME#
+				//     state == STATE_IDLE) && lpc_ad == 4'b0000) // START
+				if (state == STATE_IDLE && lpc_ad == 4'b0000) // START
 				begin
 					out_clock_enable <= 1'b0;
 					out_sync_timeout <= 1'b0;
