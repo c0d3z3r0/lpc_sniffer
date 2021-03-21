@@ -3,25 +3,23 @@
 from binascii import hexlify
 import sys
 
+CYCTYPE = ['io', 'mem', 'dma', 'rsv']
+DIR = ['read', 'write']
+
 def parse_line(line):
     if not line:
         return None
     if len(line) != 6:
         return None
-    lpctype = ''
-    direction = ''
-    address = ''
-    data = ''
-    if (line[5] & 0xc) == 0:
-        lpctype = 'io'
-    elif (line[5] & 0xc) == 1:
-        lpctype = 'mem'
-    if (line[5] & 0x2) == 0:
-        direction = 'read'
-    else:
-        direction = 'write'
-    data = hexlify(line[4:5]).decode()
-    address = hexlify(line[0:4]).decode()
+
+    _cyctype = line[5] >> 2 & 0b11
+    _dir = line[5] >> 1 & 1
+    lpctype = CYCTYPE[_cyctype]
+    direction = DIR[_dir]
+
+    data = line[4:5].hex()
+    address = line[0:4].hex()
+
     return (lpctype, direction, address, data)
 
 def parse_file(rawfile):
